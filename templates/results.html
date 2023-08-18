@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anomaly Detection Results</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #f4f6f9;
+        }
+        .container {
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="mb-4">Anomaly Detection Results</h2>
+
+        <!-- Original Data Plot -->
+        <div class="mb-5">
+            <h4>Original Data</h4>
+            {{ original_plot|safe }}
+        </div>
+
+        <!-- Isolation Forest Results -->
+        <div class="mb-5">
+            <h4>Anomaly Detection using Isolation Forest</h4>
+            {{ plot_if|safe }}
+            <h5>Anomalies:</h5>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for _, row in anomalies_if.iterrows() %}
+                        <tr>
+                            <td>{{ row.name }}</td>
+                            <td>{{ row.Value }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- One-Class SVM Results -->
+        <div class="mb-5">
+            <h4>Anomaly Detection using One-Class SVM</h4>
+            {{ plot_svm|safe }}
+            <h5>Anomalies:</h5>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for _, row in anomalies_svm.iterrows() %}
+                        <tr>
+                            <td>{{ row.name }}</td>
+                            <td>{{ row.Value }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Download Processed Data -->
+        <div class="mb-5">
+            <a href="{{ url_for('download_file', filename=export_filename) }}" class="btn btn-primary">Download Processed Data</a>
+        </div>
+
+        <!-- Back to Upload Page -->
+        <div>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Upload Page</a>
+        </div>
+
+    </div>
+</body>
+</html>
