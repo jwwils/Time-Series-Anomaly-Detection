@@ -73,7 +73,65 @@
             </table>
         </div>
 
-        <!-- Download Processed Data -->
+        
+<!-- K-means Clustering Results -->
+<div class="mb-5">
+    <h4>Anomaly Detection using K-means Clustering</h4>
+    {{ plot_kmeans|safe }}
+    <h5>Anomalies:</h5>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for _, row in anomalies_kmeans.iterrows() %}
+                <tr>
+                    <td>{{ row.name }}</td>
+                    <td>{{ row.Value }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+
+<!-- Descriptive Statistics -->
+<div class="mb-5">
+    <h4>Descriptive Statistics</h4>
+    <table class="table table-bordered">
+        <tbody>
+            <tr><td>Count</td><td>{{ count }}</td></tr>
+            <tr><td>Mean</td><td>{{ mean }}</td></tr>
+            <tr><td>Median</td><td>{{ median }}</td></tr>
+            <tr><td>Standard Deviation</td><td>{{ std }}</td></tr>
+            <tr><td>Minimum Value</td><td>{{ min_val }}</td></tr>
+            <tr><td>Maximum Value</td><td>{{ max_val }}</td></tr>
+            <tr><td>25th Percentile</td><td>{{ q25 }}</td></tr>
+            <tr><td>75th Percentile</td><td>{{ q75 }}</td></tr>
+        </tbody>
+    </table>
+</div>
+
+
+
+<!-- Anomaly Statistics -->
+<div class="mb-5">
+    <h4>Anomaly Statistics</h4>
+    <table class="table table-bordered">
+        <tbody>
+            <tr><td><b>Method</b></td><td><b>Total Anomalies</b></td><td><b>Percentage of Anomalies</b></td></tr>
+            <tr><td>Isolation Forest</td><td>{{ total_anomalies_iso }}</td><td>{{ percentage_anomalies_iso }}%</td></tr>
+            <tr><td>One-Class SVM</td><td>{{ total_anomalies_svm }}</td><td>{{ percentage_anomalies_svm }}%</td></tr>
+            <tr><td>K-means Clustering</td><td>{{ total_anomalies_kmeans }}</td><td>{{ percentage_anomalies_kmeans }}%</td></tr>
+        </tbody>
+    </table>
+</div>
+
+
+<!-- Download Processed Data -->
         <div class="mb-5">
             <a href="{{ url_for('download_file', filename=export_filename) }}" class="btn btn-primary">Download Processed Data</a>
         </div>
