@@ -3,6 +3,7 @@ import os
 import pandas as pd
 from sklearn.ensemble import IsolationForest
 from sklearn.svm import OneClassSVM
+from sklearn.cluster import DBSCAN
 from werkzeug.utils import secure_filename
 import plotly.express as px
 from plotly.offline import plot
@@ -11,7 +12,6 @@ from flask_limiter import Limiter
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 import numpy as np
-
 
 app = Flask(__name__)
 limiter = Limiter(
@@ -76,59 +76,55 @@ def process_file():
     data.columns = ['Value']
     data.fillna(method='ffill', inplace=True)
 
+    def plot_anomalies(data, anomalies, method_name):
+        """Function to create plots with anomalies highlighted"""
+        fig = px.line(data, x=data.index, y='Value', title=f'Anomalies Detected using {method_name}')
+        if not anomalies.empty:
+            fig.add_scatter(x=anomalies.index, y=anomalies['Value'], mode='markers', marker=dict(color="red", size=5), name='Anomaly')
+        return plot(fig, output_type='div')
+
     # K-means Clustering for Anomaly Detection
     scaler = StandardScaler()
     data_normalized = scaler.fit_transform(data[['Value']].values.reshape(-1, 1))
-    
-    # Define the number of clusters
     n_clusters = 5
     kmeans = KMeans(n_clusters=n_clusters)
     clusters = kmeans.fit_predict(data_normalized)
-
-    # Calculate distances to cluster centers
     distances = np.linalg.norm(data_normalized - kmeans.cluster_centers_[clusters], axis=1)
-
-    # Determine threshold and identify anomalies
     threshold = np.percentile(distances, 95)
     data['anomaly_kmeans'] = (distances > threshold).astype(int)
     anomalies_kmeans = data[data['anomaly_kmeans'] == 1]
+    plot_kmeans = plot_anomalies(data, anomalies_kmeans, 'K-means Clustering')
 
-    fig_kmeans = px.scatter(data, x=data.index, y='Value', color='anomaly_kmeans', title='K-means Clustering Anomalies')
-    plot_kmeans = plot(fig_kmeans, output_type='div')
-
-    # Feature Engineering for Isolation Forest and SVM
+    # Feature Engineering for Isolation Forest and One-Class SVM
     data['rolling_mean'] = data['Value'].rolling(window=5).mean()
     data['rolling_std'] = data['Value'].rolling(window=5).std()
     data['z_score'] = (data['Value'] - data['rolling_mean']) / data['rolling_std']
-
-    # Removing NaN values introduced by rolling computations
     data = data.dropna()
 
-    # Anomaly detection with Isolation Forest
+    # Isolation Forest
     model_if = IsolationForest(contamination=0.05)
     data['anomaly_if'] = model_if.fit_predict(data[['Value', 'rolling_mean', 'rolling_std', 'z_score']])
     anomalies_if = data[data['anomaly_if'] == -1]
+    plot_if = plot_anomalies(data, anomalies_if, 'Isolation Forest')
 
-    fig_if = px.scatter(data, x=data.index, y='Value', color='anomaly_if', title='Isolation Forest Anomalies')
-    plot_if = plot(fig_if, output_type='div')
-
-    # Anomaly detection with One-Class SVM
+    # One-Class SVM
     model_svm = OneClassSVM(nu=0.05)
     data['anomaly_svm'] = model_svm.fit_predict(data[['Value']])
     anomalies_svm = data[data['anomaly_svm'] == -1]
+    plot_svm = plot_anomalies(data, anomalies_svm, 'One-Class SVM')
 
-    fig_svm = px.scatter(data, x=data.index, y='Value', color='anomaly_svm', title='One-Class SVM Anomalies')
-    plot_svm = plot(fig_svm, output_type='div')
+    # Normalize the data and apply DBSCAN
+    scaler = StandardScaler()
+    data_normalized = scaler.fit_transform(data[['Value']].values.reshape(-1, 1))
+    dbscan = DBSCAN(eps=0.5, min_samples=5)
+    data['anomaly_dbscan'] = dbscan.fit_predict(data_normalized)
+    anomalies_dbscan = data[data['anomaly_dbscan'] == -1]
+    plot_dbscan = plot_anomalies(data, anomalies_dbscan, 'DBSCAN')
 
-    # Plot original data
-    original_plot = plot_original_data(data)
-
-    # Exporting the processed data
-    export_filename = f"processed_{filename}"
-    export_filepath = os.path.join(app.config['EXPORT_FOLDER'], export_filename)
-    data.to_csv(export_filepath)
-
-    # Descriptive Statistics
+    # Additional Statistical Features and Descriptive Statistics
+    data['diff'] = data['Value'].diff()
+    data['cumsum'] = data['Value'].cumsum()
+    data['cumprod'] = (1 + data['Value']).cumprod()
     count = data['Value'].count()
     mean = data['Value'].mean()
     median = data['Value'].median()
@@ -139,23 +135,36 @@ def process_file():
     q75 = data['Value'].quantile(0.75)
 
     # Anomaly Statistics
-    total_anomalies_iso = (data['anomaly_if'] == -1).sum()
+    total_anomalies_iso = data['anomaly_if'].sum()
     percentage_anomalies_iso = (total_anomalies_iso / count) * 100
 
-    total_anomalies_svm = (data['anomaly_svm'] == -1).sum()
+    total_anomalies_svm = data['anomaly_svm'].sum()
     percentage_anomalies_svm = (total_anomalies_svm / count) * 100
 
     total_anomalies_kmeans = data['anomaly_kmeans'].sum()
     percentage_anomalies_kmeans = (total_anomalies_kmeans / count) * 100
 
-    # Return results with additional statistics
+    total_anomalies_dbscan = data['anomaly_dbscan'].sum()
+    percentage_anomalies_dbscan = (total_anomalies_dbscan / count) * 100
+
+    # Plot original data
+    original_plot = plot_original_data(data)
+
+    # Exporting the processed data
+    export_filename = f"processed_{filename}"
+    export_filepath = os.path.join(app.config['EXPORT_FOLDER'], export_filename)
+    data.to_csv(export_filepath)
+
     return render_template('results.html', 
                            anomalies_kmeans=anomalies_kmeans,
                            original_plot=original_plot,
-                           plot_if=plot_if,
-                           plot_svm=plot_svm,
                            anomalies_if=anomalies_if,
                            anomalies_svm=anomalies_svm,
+                           anomalies_dbscan=anomalies_dbscan,
+                           plot_kmeans=plot_kmeans,
+                           plot_if=plot_if,
+                           plot_svm=plot_svm,
+                           plot_dbscan=plot_dbscan,
                            export_filename=export_filename,
                            count=count,
                            mean=mean,
@@ -170,7 +179,9 @@ def process_file():
                            total_anomalies_svm=total_anomalies_svm,
                            percentage_anomalies_svm=percentage_anomalies_svm,
                            total_anomalies_kmeans=total_anomalies_kmeans,
-                           percentage_anomalies_kmeans=percentage_anomalies_kmeans)
+                           percentage_anomalies_kmeans=percentage_anomalies_kmeans,
+                           total_anomalies_dbscan=total_anomalies_dbscan,
+                           percentage_anomalies_dbscan=percentage_anomalies_dbscan)
 
 @app.route('/download/<filename>')
 def download_file(filename):
