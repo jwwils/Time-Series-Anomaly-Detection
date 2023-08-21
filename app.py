@@ -12,6 +12,8 @@ from flask_limiter import Limiter
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 import numpy as np
+from sklearn.neighbors import LocalOutlierFactor
+
 
 app = Flask(__name__)
 limiter = Limiter(
@@ -21,7 +23,7 @@ limiter = Limiter(
 )
 
 UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'csv'}
+ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'xls', 'json'}
 EXPORT_FOLDER = 'exports'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['EXPORT_FOLDER'] = EXPORT_FOLDER
@@ -33,6 +35,17 @@ if not os.path.exists(EXPORT_FOLDER):
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def read_uploaded_file(filepath):
+    if filepath.endswith('.csv'):
+        data = pd.read_csv(filepath)
+    elif filepath.endswith('.xlsx') or filepath.endswith('.xls'):
+        data = pd.read_excel(filepath)
+    elif filepath.endswith('.json'):
+        data = pd.read_json(filepath)
+    else:
+        raise ValueError("Unsupported file type")
+    return data
 
 def plot_original_data(data):
     fig = px.line(data, x=data.index, y='Value', title='Original Data')
@@ -55,8 +68,8 @@ def upload_file():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
 
-        # Read the data to get column names
-        data = pd.read_csv(filepath)
+        # Read the data to get column names using the new function
+        data = read_uploaded_file(filepath)
         columns = data.columns.tolist()
         return render_template('select_columns.html', columns=columns, filename=filename)
     else:
@@ -71,7 +84,7 @@ def process_file():
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
 
     # Read the data using the user-selected columns
-    data = pd.read_csv(filepath, usecols=[time_column, value_column])
+    data = read_uploaded_file(filepath)[[time_column, value_column]]
     data.set_index(time_column, inplace=True)
     data.columns = ['Value']
     data.fillna(method='ffill', inplace=True)
@@ -113,6 +126,13 @@ def process_file():
     anomalies_svm = data[data['anomaly_svm'] == -1]
     plot_svm = plot_anomalies(data, anomalies_svm, 'One-Class SVM')
 
+    # Local Outlier Factor (LOF)
+    model_lof = LocalOutlierFactor(n_neighbors=20, contamination=0.05)
+    data['anomaly_lof'] = model_lof.fit_predict(data[['Value']])
+    anomalies_lof = data[data['anomaly_lof'] == -1]
+    plot_lof = plot_anomalies(data, anomalies_lof, 'Local Outlier Factor')
+
+
     # Normalize the data and apply DBSCAN
     scaler = StandardScaler()
     data_normalized = scaler.fit_transform(data[['Value']].values.reshape(-1, 1))
@@ -147,6 +167,9 @@ def process_file():
     total_anomalies_dbscan = data['anomaly_dbscan'].sum()
     percentage_anomalies_dbscan = (total_anomalies_dbscan / count) * 100
 
+    total_anomalies_lof = data['anomaly_lof'].sum()
+    percentage_anomalies_lof = (total_anomalies_lof / count) * 100
+
     # Plot original data
     original_plot = plot_original_data(data)
 
@@ -165,6 +188,8 @@ def process_file():
                            plot_if=plot_if,
                            plot_svm=plot_svm,
                            plot_dbscan=plot_dbscan,
+                           anomalies_lof=anomalies_lof,
+                           plot_lof=plot_lof,
                            export_filename=export_filename,
                            count=count,
                            mean=mean,
@@ -181,7 +206,8 @@ def process_file():
                            total_anomalies_kmeans=total_anomalies_kmeans,
                            percentage_anomalies_kmeans=percentage_anomalies_kmeans,
                            total_anomalies_dbscan=total_anomalies_dbscan,
-                           percentage_anomalies_dbscan=percentage_anomalies_dbscan)
+                           percentage_anomalies_dbscan=percentage_anomalies_dbscan,
+                           percentage_anomalies_lof=percentage_anomalies_lof)
 
 @app.route('/download/<filename>')
 def download_file(filename):

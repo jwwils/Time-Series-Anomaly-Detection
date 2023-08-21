@@ -75,6 +75,19 @@
             </ul>
         </div>
 
+        <!-- Local Outlier Factor (LOF) Results -->
+        <div class="mb-5">
+            <h4>Anomaly Detection using Local Outlier Factor (LOF)</h4>
+            {{ plot_lof|safe }}
+            <h5>Anomalies:</h5>
+            <ul>
+                {% for _, row in anomalies_lof.iterrows() %}
+                    <li>{{ row.name }}: {{ row.Value }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+
         <!-- Descriptive Statistics -->
         <div class="mb-5">
             <h4>Descriptive Statistics</h4>
@@ -98,6 +111,7 @@
                 <li>Total Anomalies Detected by One-Class SVM: {{ total_anomalies_svm }} ({{ percentage_anomalies_svm }}%)</li>
                 <li>Total Anomalies Detected by K-means Clustering: {{ total_anomalies_kmeans }} ({{ percentage_anomalies_kmeans }}%)</li>
                 <li>Total Anomalies Detected by DBSCAN: {{ total_anomalies_dbscan }} ({{ percentage_anomalies_dbscan }}%)</li>
+                <li>Total Anomalies Detected by LOF: {{ total_anomalies_lof }} ({{ percentage_anomalies_lof }}%)</li>
             </ul>
         </div>
 

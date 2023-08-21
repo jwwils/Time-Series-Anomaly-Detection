@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload CSV File</title>
+    <title>Upload Data File</title>
     <!-- Bootstrap CSS -->
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <!-- Custom CSS for dynamic gradient background -->
@@ -19,10 +19,11 @@
             <div class="col-md-6 offset-md-3">
                 <div class="card">
                     <div class="card-body">
-                        <h5 class="card-title text-center">Upload CSV File</h5>
+                        <h5 class="card-title text-center">Upload Data File</h5>
+                        <p class="text-center">Supported file formats: .csv, .xls, .xlsx, .json</p>
                         <form action="/upload" method="post" enctype="multipart/form-data">
                             <div class="custom-file mb-3">
-                                <input type="file" class="custom-file-input" id="customFile" name="file">
+                                <input type="file" class="custom-file-input" id="customFile" name="file" accept=".csv, .xls, .xlsx, .json" required>
                                 <label class="custom-file-label" for="customFile">Choose file</label>
                             </div>
                             <input type="submit" value="Upload" class="btn btn-primary btn-block">
