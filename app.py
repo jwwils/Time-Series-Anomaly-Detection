@@ -13,6 +13,10 @@ from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 import numpy as np
 from sklearn.neighbors import LocalOutlierFactor
+from hmmlearn.hmm import GaussianHMM
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
+
+
 
 
 app = Flask(__name__)
@@ -91,10 +95,36 @@ def process_file():
 
     def plot_anomalies(data, anomalies, method_name):
         """Function to create plots with anomalies highlighted"""
+        if isinstance(anomalies, np.ndarray):
+            anomalies = pd.DataFrame(anomalies, columns=['Value'])
         fig = px.line(data, x=data.index, y='Value', title=f'Anomalies Detected using {method_name}')
         if not anomalies.empty:
             fig.add_scatter(x=anomalies.index, y=anomalies['Value'], mode='markers', marker=dict(color="red", size=5), name='Anomaly')
         return plot(fig, output_type='div')
+
+    def train_HMM(series, n_components=4, n_iter=1000):
+        model = GaussianHMM(n_components=n_components, covariance_type="diag", n_iter=n_iter)
+        model.fit(series.reshape(-1, 1))
+        return model
+    
+    def detect_anomalies_HMM(model, values, indices, threshold=-10):
+        log_likelihood = np.array([model.score(np.array([val]).reshape(-1, 1)) for val in values])
+        anomaly_indices = np.where(log_likelihood < threshold)[0]
+        anomalies = pd.DataFrame({'Value': values[anomaly_indices]}, index=indices[anomaly_indices])
+        return anomalies
+
+
+    def train_holt_winters(series, seasonal_periods, trend='add', seasonal='add'):
+        model = ExponentialSmoothing(series, trend=trend, seasonal=seasonal, seasonal_periods=seasonal_periods)
+        hw_model = model.fit()
+        return hw_model
+    
+    def forecast_holt_winters(hw_model, steps=10):
+        return hw_model.forecast(steps=steps)
+
+
+
+
 
     # K-means Clustering for Anomaly Detection
     scaler = StandardScaler()
@@ -141,6 +171,25 @@ def process_file():
     anomalies_dbscan = data[data['anomaly_dbscan'] == -1]
     plot_dbscan = plot_anomalies(data, anomalies_dbscan, 'DBSCAN')
 
+
+    # Train HMM
+    hmm_model = train_HMM(data['Value'].values)
+
+    # Detect anomalies using HMM
+    anomalies_hmm = detect_anomalies_HMM(hmm_model, data['Value'].values, data['Value'].index)
+
+    plot_hmm = plot_anomalies(data, anomalies_hmm, 'HMM')
+
+    # The data is good due to its weights toward newer information 
+
+
+    #hw_model = train_holt_winters(data['Value'], seasonal_periods=12)  Blocked off due to error out of bound can't predict based 
+
+    #hw_forecast = pd.DataFrame(hw_forecast, columns=['Value'])
+
+    #plot_hw = plot_anomalies(data, hw_forecast, 'HW')
+
+
     # Additional Statistical Features and Descriptive Statistics
     data['diff'] = data['Value'].diff()
     data['cumsum'] = data['Value'].cumsum()
@@ -170,8 +219,42 @@ def process_file():
     total_anomalies_lof = data['anomaly_lof'].sum()
     percentage_anomalies_lof = (total_anomalies_lof / count) * 100
 
+   
+
     # Plot original data
     original_plot = plot_original_data(data)
+
+    def plot_anomalies(data, anomalies, column_name, title):
+ 
+        fig = px.scatter(data, x=data.index, y='Value', color=data[column_name].apply(lambda x: 'Anomaly' if x == -1 else 'Normal'), 
+                     title=title, color_discrete_map={'Anomaly':'red', 'Normal':'blue'})
+        return plot(fig, output_type='div')
+
+    def generate_isolation_forest_plot(data, anomalies):
+        return plot_anomalies(data, anomalies, 'anomaly_if', 'Isolation Forest Anomalies')
+
+    def generate_one_class_svm_plot(data, anomalies):
+        return plot_anomalies(data, anomalies, 'anomaly_svm', 'One-Class SVM Anomalies')
+
+    def generate_dbscan_plot(data, anomalies):
+        return plot_anomalies(data, anomalies, 'anomaly_dbscan', 'DBSCAN Anomalies')
+
+    def generate_kmeans_plot(data, anomalies):
+        return plot_anomalies(data, anomalies, 'cluster', 'KMeans Anomalies')
+
+    def generate_lof_plot(data, anomalies):
+        return plot_anomalies(data, anomalies, 'anomaly_lof', 'Local Outlier Factor Anomalies')
+    
+    def generate_hmm_plot(data, anomalies):
+        return plot_anomalies(data, anomalies, 'anomalies_hmm', 'HMM Anomalies')
+    
+    def generate_hw_plot(data, anomalies):
+        return plot_anomalies(data, anomalies, 'hw_forecast', 'HW Forecast ')
+    
+
+# Returning the plotting functions for verification
+    generate_isolation_forest_plot, generate_one_class_svm_plot, generate_dbscan_plot, generate_kmeans_plot, generate_lof_plot,generate_hmm_plot,generate_hw_plot
+    
 
     # Exporting the processed data
     export_filename = f"processed_{filename}"
@@ -190,6 +273,8 @@ def process_file():
                            plot_dbscan=plot_dbscan,
                            anomalies_lof=anomalies_lof,
                            plot_lof=plot_lof,
+                           anomalies_hmm=anomalies_hmm,
+                           plot_hmm=plot_hmm,
                            export_filename=export_filename,
                            count=count,
                            mean=mean,
@@ -207,7 +292,8 @@ def process_file():
                            percentage_anomalies_kmeans=percentage_anomalies_kmeans,
                            total_anomalies_dbscan=total_anomalies_dbscan,
                            percentage_anomalies_dbscan=percentage_anomalies_dbscan,
-                           percentage_anomalies_lof=percentage_anomalies_lof)
+                           percentage_anomalies_lof=percentage_anomalies_lof
+                           )
 
 @app.route('/download/<filename>')
 def download_file(filename):
