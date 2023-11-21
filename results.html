@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anomaly Detection Results</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #f4f6f9;
+        }
+        .container {
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="mb-4">Anomaly Detection Results</h2>
+
+        <!-- Original Data Plot -->
+        <div class="mb-5">
+            <h4>Original Data</h4>
+            {{ original_plot|safe }}
+        </div>
+
+        <!-- K-means Clustering Results -->
+        <div class="mb-5">
+            <h4>Anomaly Detection using K-means Clustering</h4>
+            {{ plot_kmeans|safe }}
+            <h5>Anomalies:</h5>
+            <ul>
+                {% for _, row in anomalies_kmeans.iterrows() %}
+                    <li>{{ row.name }}: {{ row.Value }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Isolation Forest Results -->
+        <div class="mb-5">
+            <h4>Anomaly Detection using Isolation Forest</h4>
+            {{ plot_if|safe }}
+            <h5>Anomalies:</h5>
+            <ul>
+                {% for _, row in anomalies_if.iterrows() %}
+                    <li>{{ row.name }}: {{ row.Value }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- One-Class SVM Results -->
+        <div class="mb-5">
+            <h4>Anomaly Detection using One-Class SVM</h4>
+            {{ plot_svm|safe }}
+            <h5>Anomalies:</h5>
+            <ul>
+                {% for _, row in anomalies_svm.iterrows() %}
+                    <li>{{ row.name }}: {{ row.Value }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- DBSCAN Results -->
+        <div class="mb-5">
+            <h4>Anomaly Detection using DBSCAN</h4>
+            {{ plot_dbscan|safe }}
+            <h5>Anomalies:</h5>
+            <ul>
+                {% for _, row in anomalies_dbscan.iterrows() %}
+                    <li>{{ row.name }}: {{ row.Value }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Local Outlier Factor (LOF) Results -->
+        <div class="mb-5">
+            <h4>Anomaly Detection using Local Outlier Factor (LOF)</h4>
+            {{ plot_lof|safe }}
+            <h5>Anomalies:</h5>
+            <ul>
+                {% for _, row in anomalies_lof.iterrows() %}
+                    <li>{{ row.name }}: {{ row.Value }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- HMM Results -->
+        <div class="mb-5">
+            <h4>Anomaly Detection using Hidden Markov Models</h4>
+            {{ plot_hmm|safe }}
+            <h5>Anomalies:</h5>
+            <ul>
+            {% for _, row in anomalies_hmm.iterrows() %}
+                <li>{{ row.name }}: {{ row.Value }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+
+
+        <!-- Descriptive Statistics -->
+        <div class="mb-5">
+            <h4>Descriptive Statistics</h4>
+            <ul>
+                <li>Count: {{ count }}</li>
+                <li>Mean: {{ mean }}</li>
+                <li>Median: {{ median }}</li>
+                <li>Standard Deviation: {{ std }}</li>
+                <li>Minimum Value: {{ min_val }}</li>
+                <li>Maximum Value: {{ max_val }}</li>
+                <li>25th Percentile: {{ q25 }}</li>
+                <li>75th Percentile: {{ q75 }}</li>
+            </ul>
+        </div>
+
+        <!-- Anomaly Statistics -->
+        <div class="mb-5">
+            <h4>Anomaly Statistics</h4>
+            <ul>
+                <li>Total Anomalies Detected by Isolation Forest: {{ total_anomalies_iso }} ({{ percentage_anomalies_iso }}%)</li>
+                <li>Total Anomalies Detected by One-Class SVM: {{ total_anomalies_svm }} ({{ percentage_anomalies_svm }}%)</li>
+                <li>Total Anomalies Detected by K-means Clustering: {{ total_anomalies_kmeans }} ({{ percentage_anomalies_kmeans }}%)</li>
+                <li>Total Anomalies Detected by DBSCAN: {{ total_anomalies_dbscan }} ({{ percentage_anomalies_dbscan }}%)</li>
+                <li>Total Anomalies Detected by LOF: {{ total_anomalies_lof }} ({{ percentage_anomalies_lof }}%)</li>
+               
+            </ul>
+        </div>
+
+        <!-- Download Processed Data -->
+        <div class="mb-5">
+            <a href="{{ url_for('download_file', filename=export_filename) }}" class="btn btn-primary">Download Processed Data</a>
+        </div>
+
+        <!-- Back to Upload Page -->
+        <div>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Upload Page</a>
+        </div>
+    </div>
+</body>
+</html>
